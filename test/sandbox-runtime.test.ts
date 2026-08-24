@@ -144,10 +144,91 @@ test("resolveAllowances makes configured and session write paths readable", () =
 });
 
 test("extractBlockedWritePath recognizes shell sandbox errors", () => {
+  // macOS Seatbelt
   assert.equal(
     extractBlockedWritePath("bash: line 1: /private/file: Operation not permitted"),
     "/private/file",
   );
+
+  // Linux Git lock ref EROFS
+  assert.equal(
+    extractBlockedWritePath(
+      "fatal: cannot lock ref 'refs/heads/fix-ghost-dotfiles': Unable to create '/home/user/sandbox-runtime/.git/refs/heads/fix-ghost-dotfiles.lock': Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/.git/refs/heads/fix-ghost-dotfiles.lock",
+  );
+
+  // Linux Git unable to create
+  assert.equal(
+    extractBlockedWritePath(
+      "fatal: Unable to create '/home/user/sandbox-runtime/.git/index.lock': Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/.git/index.lock",
+  );
+
+  // Linux Git cannot open
+  assert.equal(
+    extractBlockedWritePath(
+      "fatal: cannot open /home/user/sandbox-runtime/.git/config: Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/.git/config",
+  );
+
+  // Linux coreutils mkdir
+  assert.equal(
+    extractBlockedWritePath(
+      "mkdir: cannot create directory '/home/user/sandbox-runtime/dist': Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/dist",
+  );
+
+  // Linux coreutils unicode quotes
+  assert.equal(
+    extractBlockedWritePath(
+      "mkdir: cannot create directory ‘/home/user/sandbox-runtime/dist’: Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/dist",
+  );
+
+  // Linux coreutils touch
+  assert.equal(
+    extractBlockedWritePath(
+      "touch: cannot touch '/home/user/sandbox-runtime/file.txt': Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/file.txt",
+  );
+
+  // Linux coreutils ln
+  assert.equal(
+    extractBlockedWritePath(
+      "ln: failed to create symbolic link '/home/user/sandbox-runtime/node_modules': Read-only file system",
+    ),
+    "/home/user/sandbox-runtime/node_modules",
+  );
+
+  // Linux bash redirection
+  assert.equal(
+    extractBlockedWritePath("bash: /home/user/sandbox-runtime/test.txt: Read-only file system"),
+    "/home/user/sandbox-runtime/test.txt",
+  );
+
+  // Node.js EROFS
+  assert.equal(
+    extractBlockedWritePath(
+      "EROFS: read-only file system, open '/home/user/sandbox-runtime/_tmp_5'",
+    ),
+    "/home/user/sandbox-runtime/_tmp_5",
+  );
+
+  // Python Errno 30
+  assert.equal(
+    extractBlockedWritePath(
+      "[Errno 30] Read-only file system: '/home/user/sandbox-runtime/file.py'",
+    ),
+    "/home/user/sandbox-runtime/file.py",
+  );
+
+  // Non-matching generic errors
   assert.equal(extractBlockedWritePath("permission denied"), null);
 });
 

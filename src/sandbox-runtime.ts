@@ -316,11 +316,34 @@ export function supportsNodeEnvProxy(version: string): boolean {
   return (major === 22 && minor >= 21) || major >= 24;
 }
 
+const BLOCKED_WRITE_PATTERNS: RegExp[] = [
+  // Git: Unable to create '/path': Read-only file system / Permission denied
+  /(?:fatal|error):\s+(?:cannot lock ref '[^']*':\s+)?(?:Unable to create|could not create leading directories of|cannot create directory at)\s+['"‘“]?(\/[^'"’”\s:]+)['"’”]?/i,
+
+  // Git: cannot open /path: Read-only file system
+  /(?:fatal|error):\s+cannot open\s+['"‘“]?(\/[^'"’”\s:]+)['"’”]?:\s+(?:Read-only file system|Permission denied|Operation not permitted)/i,
+
+  // Node.js fs errors: EROFS / EACCES
+  /(?:EROFS:\s+read-only file system|EACCES:\s+permission denied),\s+(?:open|mkdir|copyfile|unlink|symlink|rename|writeFile|rmdir)\s+['"‘“]?(?:[^'"’”\s]+ -> )?['"‘“]?(\/[^'"’”\s]+)['"’”]?/i,
+
+  // Python / POSIX Errno: [Errno 30] Read-only file system: '/path' or [Errno 13] Permission denied: '/path'
+  /\[Errno (?:30|13)\]\s+(?:Read-only file system|Permission denied):\s+['"‘“]?(\/[^'"’”\s]+)['"’”]?/i,
+
+  // Coreutils: mkdir / touch / rm / cp / mv / ln / sed
+  /(?:mkdir|touch|rm|cp|mv|ln|sed|chmod|chown):\s+(?:cannot (?:create|touch|remove|move|rename)|failed to create (?:symbolic )?link)\s+[^'"‘“]*['"‘“]?(\/[^'"’”\s:]+)['"’”]?:\s+(?:Read-only file system|Permission denied|Operation not permitted)/i,
+
+  // Shell redirection / command: bash: /path: Read-only file system / Permission denied / Operation not permitted
+  /(?:\/bin\/bash|bash|sh|zsh):\s+(?:line \d+:\s+)?(?:\d+:\s+)?(\/[^\s:]+):\s+(?:Read-only file system|Permission denied|Operation not permitted)/i,
+];
+
 export function extractBlockedWritePath(output: string): string | null {
-  const match = output.match(
-    /(?:\/bin\/bash|bash|sh): (?:line \d: )?(\/[^\s:]+): Operation not permitted/,
-  );
-  return match ? match[1] : null;
+  for (const pattern of BLOCKED_WRITE_PATTERNS) {
+    const match = output.match(pattern);
+    if (match?.[1]) {
+      return match[1].replace(/[.,:;]+$/, "").trim();
+    }
+  }
+  return null;
 }
 
 export function createSandboxedBashOps(shellPath?: string, sshProxy = true): BashOperations {
