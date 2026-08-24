@@ -1,2 +1,2 @@
 minimumReleaseAgeExclude:
-  - "@carderne/sandbox-runtime"
+  - "@anthropic-ai/sandbox-runtime"

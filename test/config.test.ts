@@ -97,13 +97,13 @@ test("mergeConfigLayers uses defaults only for arrays not configured by either f
     {
       enabled: true,
       permissionPromptTimeoutSeconds: 0,
-      allowBrowserProcess: true,
+      autoAllowGitMetadata: false,
     },
   );
 
   assert.equal(merged.enabled, true);
   assert.equal(merged.permissionPromptTimeoutSeconds, 0);
-  assert.equal(merged.allowBrowserProcess, true);
+  assert.equal(merged.autoAllowGitMetadata, false);
   assert.deepEqual(merged.filesystem?.allowWrite, []);
   assert.deepEqual(merged.filesystem?.allowRead, DEFAULT_CONFIG.filesystem?.allowRead);
   assert.deepEqual(merged.network?.allowedDomains, DEFAULT_CONFIG.network?.allowedDomains);
